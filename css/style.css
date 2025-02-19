@@ -3,20 +3,25 @@ body {
     color: limegreen;
     font-family: monospace;
     padding: 20px;
+    margin: 0;
 }
 
 #terminal {
     width: 80%;
-    height: 400px;
+    height: 80vh;
+    margin: 20px auto;
     border: 1px solid limegreen;
     padding: 10px;
     overflow-y: auto;
+}
+
+#terminal-content {
     white-space: pre-wrap;
-    background-color: black;
 }
 
 #input-line {
     display: flex;
+    padding: 5px 0;
 }
 
 #prompt {
@@ -30,4 +35,16 @@ input {
     font-family: monospace;
     width: 100%;
     outline: none;
+}
+
+.error-text {
+    color: #ff6b6b;
+}
+
+.success-text {
+    color: #69db7c;
+}
+
+.command-text {
+    color: #ffd93d;
 }
