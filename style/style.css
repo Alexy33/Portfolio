@@ -5,8 +5,17 @@
     box-sizing: border-box;
 }
 
+:root {
+    --terminal-bg: #1a1b1e;
+    --terminal-text: #32cd32;
+    --terminal-prompt: #32cd32;
+    --terminal-error: #ff6b6b;
+    --terminal-success: #32cd32;
+}
+
 body {
-    background-color: #1a1b1e;
+    background-color: var(--terminal-bg);
+    border-color: var(--terminal-text);
     color: #32cd32;
     font-family: 'Courier New', monospace;
     min-height: 100vh;
@@ -21,7 +30,8 @@ body {
     width: 95%;
     max-width: 1200px;
     height: 90vh;
-    background-color: rgba(0, 0, 0, 0.92);
+    background-color: var(--terminal-bg);
+    border-color: var(--terminal-text);
     border: 1px solid #32cd32;
     border-radius: 5px;
     padding: 20px;
@@ -75,23 +85,50 @@ body {
 /* Ligne de commande */
 #input-line {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
+    align-items: baseline;
     padding: 5px 0;
     margin-top: 5px;
+    width: 100%;
 }
 
 #prompt {
-    color: #32cd32;
+    color: var(--terminal-prompt);
     font-weight: bold;
     margin-right: 8px;
+    white-space: nowrap;
     text-shadow: 0 0 4px rgba(50, 205, 50, 0.4);
+}
+
+#command-input {
+    background: transparent;
+    border: none;
+    color: #32cd32;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    flex: 1;
+    min-width: 50px;
+    outline: none;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.long-path {
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+}
+
+.info-text {
+    color: #87CEEB;
+    margin: 4px 0;
 }
 
 /* Champ de saisie */
 input {
     background: transparent;
     border: none;
-    color: #32cd32;
+    color: var(--terminal-text);
     font-family: 'Courier New', monospace;
     font-size: 14px;
     width: 100%;
@@ -102,12 +139,12 @@ input {
 
 /* Types de messages */
 .error-text {
-    color: #ff6b6b;
+    color: var(--terminal-error);
     text-shadow: 0 0 4px rgba(255, 107, 107, 0.4);
 }
 
 .success-text {
-    color: #32cd32;
+    color: var(--terminal-success);
     text-shadow: 0 0 4px rgba(50, 205, 50, 0.4);
 }
 
