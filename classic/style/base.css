@@ -1,0 +1,67 @@
+/* Variables globales */
+:root {
+    /* Palette Solo Leveling */
+    --color-primary: #6F2CF4;     /* Violet principal */
+    --color-secondary: #00A8FF;   /* Bleu clair accent */
+    --color-dark: #1A1A2E;        /* Bleu très foncé/noir */
+    --color-darker: #0F0F1A;      /* Noir profond */
+    --color-light: #E0E0FF;       /* Blanc bleuté */
+    --color-accent: #FF3B6F;      /* Rose/rouge accent */
+    --color-text: #E6E6FA;        /* Texte principal */
+    --color-text-light: #B8B8E0;  /* Texte secondaire */
+    
+    /* Ombres et effets */
+    --shadow-sm: 0 2px 4px rgba(111, 44, 244, 0.1);
+    --shadow-md: 0 4px 8px rgba(111, 44, 244, 0.2);
+    --shadow-lg: 0 8px 16px rgba(111, 44, 244, 0.3);
+    --shadow-glow: 0 0 20px rgba(111, 44, 244, 0.4);
+    
+    /* Transitions */
+    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    color: var(--color-text);
+    background: var(--color-dark);
+    overflow-x: hidden;
+}
+
+/* Container */
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Textes et titres */
+h1, h2, h3, h4, h5, h6 {
+    line-height: 1.2;
+    margin-bottom: 1rem;
+}
+
+p {
+    margin-bottom: 1rem;
+}
+
+/* Liens */
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+a:hover {
+    color: var(--color-secondary);
+}

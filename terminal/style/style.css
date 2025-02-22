@@ -1,0 +1,231 @@
+/* Reset et styles de base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --terminal-bg: #1a1b1e;
+    --terminal-text: #32cd32;
+    --terminal-prompt: #32cd32;
+    --terminal-error: #ff6b6b;
+    --terminal-success: #32cd32;
+}
+
+body {
+    background-color: var(--terminal-bg);
+    border-color: var(--terminal-text);
+    color: #32cd32;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Terminal principal */
+#terminal {
+    width: 95%;
+    max-width: 1200px;
+    height: 90vh;
+    background-color: var(--terminal-bg);
+    border-color: var(--terminal-text);
+    border: 1px solid #32cd32;
+    border-radius: 5px;
+    padding: 20px;
+    position: relative;
+    overflow-y: auto;
+    box-shadow: 0 0 20px rgba(50, 205, 50, 0.15);
+}
+
+/* Effet de scan lines */
+#terminal::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(50, 205, 50, 0.03),
+        rgba(50, 205, 50, 0.03) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+}
+
+/* Effet de brillance sur le bord */
+#terminal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(to bottom, 
+        rgba(50, 205, 50, 0.1), 
+        transparent
+    );
+    border-radius: 5px 5px 0 0;
+    pointer-events: none;
+}
+
+/* Contenu du terminal */
+#terminal-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Ligne de commande */
+#input-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    padding: 5px 0;
+    margin-top: 5px;
+    width: 100%;
+}
+
+#prompt {
+    color: var(--terminal-prompt);
+    font-weight: bold;
+    margin-right: 8px;
+    white-space: nowrap;
+    text-shadow: 0 0 4px rgba(50, 205, 50, 0.4);
+}
+
+#command-input {
+    background: transparent;
+    border: none;
+    color: #32cd32;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    flex: 1;
+    min-width: 50px;
+    outline: none;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.long-path {
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+}
+
+.info-text {
+    color: #87CEEB;
+    margin: 4px 0;
+}
+
+/* Champ de saisie */
+input {
+    background: transparent;
+    border: none;
+    color: var(--terminal-text);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+    caret-color: #32cd32;
+    text-shadow: 0 0 2px rgba(50, 205, 50, 0.4);
+}
+
+/* Types de messages */
+.error-text {
+    color: var(--terminal-error);
+    text-shadow: 0 0 4px rgba(255, 107, 107, 0.4);
+}
+
+.success-text {
+    color: var(--terminal-success);
+    text-shadow: 0 0 4px rgba(50, 205, 50, 0.4);
+}
+
+.command-text {
+    color: #ffd700;
+    text-shadow: 0 0 4px rgba(255, 215, 0, 0.4);
+}
+
+/* Scrollbar personnalisée */
+#terminal::-webkit-scrollbar {
+    width: 8px;
+}
+
+#terminal::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+#terminal::-webkit-scrollbar-thumb {
+    background: #32cd32;
+    border-radius: 4px;
+}
+
+#terminal::-webkit-scrollbar-thumb:hover {
+    background: #28a428;
+}
+
+/* Animation de clignotement pour le curseur */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+input::after {
+    content: '█';
+    animation: blink 1s infinite;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Style pour le bouton d'arrêt matrix */
+button {
+    background: #32cd32;
+    color: black;
+    border: none;
+    padding: 8px 15px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-family: monospace;
+    font-weight: bold;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px rgba(50, 205, 50, 0.2);
+}
+
+button:hover {
+    background: #28a428;
+    box-shadow: 0 0 10px rgba(50, 205, 50, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Adaptation mobile */
+@media (max-width: 768px) {
+    #terminal {
+        width: 98%;
+        height: 95vh;
+        padding: 10px;
+    }
+
+    #terminal-content {
+        font-size: 12px;
+    }
+
+    input {
+        font-size: 12px;
+    }
+
+    button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
