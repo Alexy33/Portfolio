@@ -60,6 +60,5 @@
   }
   
   .sl-glow {
-    box-shadow: 0 0 25px var(--sl-purple),
-                0 0 50px var(--sl-blue);
+    box-shadow: none !important;
   }

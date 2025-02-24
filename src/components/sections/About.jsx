@@ -57,8 +57,8 @@ const About = () => {
             </div>
           </div>
 
-          <h3 className="text-3xl font-semibold text-purple-200 animate-text hover:text-blue-300 transition-colors duration-300">Denis Messié</h3>
-          <p className="text-xl text-blue-300 animate-text hover:text-purple-300 transition-colors duration-300">Développeur Full Stack & Shadow Monarch</p>
+          <h3 className="text-3xl font-semibold text-purple-200 animate-text hover:text-blue-300 transition-colors duration-300">Canu Alexy</h3>
+          <p className="text-xl text-blue-300 animate-text hover:text-purple-300 transition-colors duration-300">Développeur Junior</p>
         </div>
         
         <div className="space-y-6 text-lg">
