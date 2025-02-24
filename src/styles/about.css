@@ -1,0 +1,127 @@
+/* Animations spécifiques au About */
+@keyframes runeGlow {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  @keyframes borderPulse {
+    0%, 100% {
+      border-color: rgba(111, 66, 193, 0.6);
+    }
+    50% {
+      border-color: rgba(78, 124, 255, 0.8);
+    }
+  }
+  
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  @keyframes spin-reverse {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+  
+  @keyframes borderWave {
+    0%, 100% {
+      border-radius: 60% 40% 30% 70%/60% 30% 70% 40%;
+    }
+    50% {
+      border-radius: 30% 60% 70% 40%/50% 60% 30% 60%;
+    }
+  }
+  
+  /* Classes d'animation */
+  .animate-spin-slow {
+    animation: spin-slow 10s linear infinite;
+  }
+  
+  .animate-spin-reverse {
+    animation: spin-reverse 15s linear infinite;
+  }
+  
+  .animate-border {
+    animation: borderPulse 3s ease-in-out infinite;
+  }
+  
+  .animate-rune {
+    animation: runeGlow 4s ease-in-out infinite;
+  }
+  
+  .animate-wave {
+    animation: borderWave 8s ease-in-out infinite;
+  }
+  
+  /* Styles spécifiques au profil */
+  .profile-container {
+    position: relative;
+  }
+  
+  /* Suppression du fond violet */
+  .profile-container::before {
+    display: none;
+  }
+  
+  .profile-image {
+    position: relative;
+    z-index: 10;
+  }
+  
+  /* Suppression de la bordure violette carrée */
+  .profile-image::after {
+    display: none;
+  }
+  
+  /* Runes autour de l'image */
+  .rune {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--sl-purple);
+    z-index: 20;
+    filter: blur(1px);
+    box-shadow: 0 0 10px var(--sl-purple), 0 0 20px var(--sl-blue);
+    opacity: 0.8;
+    border-radius: 50%;
+  }
+  
+  /* Styles des cartes d'info */
+  .info-card {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .info-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    transition: 0.5s;
+  }
+  
+  .info-card:hover::before {
+    left: 100%;
+  }

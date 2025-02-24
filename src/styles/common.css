@@ -1,0 +1,65 @@
+/* Styles de base et variables */
+:root {
+    --sl-purple: #6f42c1;
+    --sl-blue: #4e7cff;
+    --sl-dark: #1a1a1a;
+  }
+  
+  /* Personnalisation de la barre de défilement */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: rgba(111, 66, 193, 0.1);
+    border-radius: 5px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, var(--sl-purple), var(--sl-blue));
+    border-radius: 5px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, var(--sl-blue), var(--sl-purple));
+  }
+  
+  /* Animations communes */
+  @keyframes arise {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Classes communes */
+  .arise {
+    animation: arise 0.5s ease-out forwards;
+  }
+  
+  .animate-text {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  
+  .sl-glow {
+    box-shadow: 0 0 25px var(--sl-purple),
+                0 0 50px var(--sl-blue);
+  }
