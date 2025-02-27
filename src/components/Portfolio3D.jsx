@@ -1,50 +1,469 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { PORTFOLIO_CONFIG } from '../constants/portfolio';
-import { createLights, createMaterial, createParticles, createText3D } from '../utils/three-helpers';
+import { createCrystal, createCrystalLabel } from '../utils/crystal-helpers';
+
+// Configuration des sections
+const SECTIONS = [
+  { id: 'about', title: 'À propos' },
+  { id: 'projects', title: 'Projets' },
+  { id: 'skills', title: 'Compétences' },
+  { id: 'contact', title: 'Contact' }
+];
 
 const Portfolio3D = ({ activeSection, setActiveSection }) => {
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
-  const controlsRef = useRef(null);
-  const particlesRef = useRef(null);
-  const objectsRef = useRef([]);
-  const timeRef = useRef(0);
+  const rendererRef = useRef(null);
+  const crystalsRef = useRef([]);
+  const raycasterRef = useRef(null);
+  const mouseRef = useRef(new THREE.Vector2());
+  const hoveredCrystalRef = useRef(null);
+  
+  // Références pour les event handlers
+  const handlersRef = useRef({
+    mouseMove: null,
+    click: null,
+    resize: null
+  });
+
+  // Définir updateEventListeners avec useCallback pour qu'il soit accessible partout
+  const updateEventListeners = useCallback(() => {
+    if (!handlersRef.current.mouseMove) return;
+    
+    // Retirer d'abord tous les écouteurs existants
+    window.removeEventListener('mousemove', handlersRef.current.mouseMove);
+    window.removeEventListener('click', handlersRef.current.click);
+    
+    // N'ajouter les écouteurs que si aucune section n'est active
+    if (!activeSection) {
+      window.addEventListener('mousemove', handlersRef.current.mouseMove);
+      window.addEventListener('click', handlersRef.current.click);
+    }
+    
+    // Toujours garder l'écouteur de redimensionnement
+    window.addEventListener('resize', handlersRef.current.resize);
+  }, [activeSection]);
 
   useEffect(() => {
     if (!mountRef.current) return;
 
-    // Scene setup with fog for depth effect
+    // Configuration de la scène
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x000814, 0.035);
+    scene.background = new THREE.Color(0x000814); // Fond bleu très foncé
     sceneRef.current = scene;
 
-    // Camera setup
+    // Configuration de la caméra
     const camera = new THREE.PerspectiveCamera(
-      PORTFOLIO_CONFIG.camera.fov,
+      70,
       window.innerWidth / window.innerHeight,
-      PORTFOLIO_CONFIG.camera.near,
-      PORTFOLIO_CONFIG.camera.far
+      0.1,
+      1000
     );
-    camera.position.set(...PORTFOLIO_CONFIG.camera.position);
+    camera.position.set(0, 0, 18); // Caméra un peu plus éloignée
     cameraRef.current = camera;
 
-    const handleClick = (event) => {
-      // Calculate mouse position in normalized device coordinates
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(
-        objects.map(obj => obj.mesh)
-      );
-  
+    // Configuration du renderer
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    mountRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // Controls - désactivés pour l'instant
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableRotate = false;    
+    controls.enableZoom = false;
+    controls.enablePan = false;
+    
+    // Ajout de lumières pour améliorer le rendu des cristaux
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+    
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    dirLight.position.set(1, 1, 5);
+    scene.add(dirLight);
+    
+    // Lumière d'accentuation par le bas pour effet dramatique
+    const bottomLight = new THREE.DirectionalLight(0x6fa8ff, 0.3);
+    bottomLight.position.set(0, -5, 2);
+    scene.add(bottomLight);
+
+    // Raycaster pour la détection de survol et de clic
+    const raycaster = new THREE.Raycaster();
+    raycasterRef.current = raycaster;
+
+    // Nouveau système de particules qui émergent du cristal
+    const createEmergingParticleSystem = (crystal, color) => {
+      // Configuration des particules
+      const particlesCount = 60;
+      const particleGeometry = new THREE.BufferGeometry();
+      
+      // Tableaux pour stocker les positions et les données d'animation
+      const positions = new Float32Array(particlesCount * 3);
+      const velocities = [];
+      const startTimes = [];
+      const lifespans = [];
+      const targetRadii = [];
+      
+      // Initialiser toutes les particules au centre du cristal
+      const crystalPosition = new THREE.Vector3().copy(crystal.position);
+      
+      for (let i = 0; i < particlesCount; i++) {
+        // Direction aléatoire avec bonne distribution circulaire
+        const angle = Math.random() * Math.PI * 2;
+        const randomDir = new THREE.Vector3(
+          Math.cos(angle) * 0.8,
+          (Math.random() - 0.5) * 0.4, // Variation verticale limitée
+          Math.sin(angle) * 0.8
+        ).normalize();
+        
+        // Position initiale plus éloignée du cristal (1.2 - 1.5 unités)
+        const initialOffset = 1.2 + Math.random() * 0.3;
+        positions[i * 3] = crystalPosition.x + randomDir.x * initialOffset;
+        positions[i * 3 + 1] = crystalPosition.y + randomDir.y * initialOffset;
+        positions[i * 3 + 2] = crystalPosition.z + randomDir.z * initialOffset;
+        
+        // Vitesse avec tendance à monter mais avec variation
+        velocities.push(new THREE.Vector3(
+          randomDir.x * 0.01,
+          Math.random() * 0.01 + 0.005, // Composante verticale toujours positive
+          randomDir.z * 0.01
+        ));
+        
+        // Délai aléatoire progressif
+        startTimes.push(Date.now() + Math.random() * 2000);
+        
+        // Durée de vie variée mais pas trop longue pour éviter l'accumulation
+        lifespans.push(3000 + Math.random() * 5000);
+        
+        // Distance maximale avec variation
+        targetRadii.push(2.5 + Math.random() * 2.5);
+      }
+      
+      particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      
+      // Matériau lumineux pour des particules PLUS GROSSES
+      const particleMaterial = new THREE.PointsMaterial({
+        color: color,
+        size: 0.35, // TAILLE AUGMENTÉE (0.2 → 0.35)
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true
+      });
+      
+      const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+      particleSystem.frustumCulled = false;
+      
+      // Stocker les données d'animation
+      particleSystem.userData = {
+        velocities,
+        startTimes,
+        lifespans,
+        targetRadii,
+        crystalPosition,
+        isActive: false,
+        lastEmissionTime: Date.now(),
+        emissionRate: 100
+      };
+      
+      // Ajouter à la scène
+      scene.add(particleSystem);
+      
+      return particleSystem;
+    };
+
+    // Fonction pour animer les particules
+    const animateParticleSystem = (particleSystem, isHovered, currentTime) => {
+      if (!particleSystem) return;
+      
+      const {
+        velocities,
+        startTimes,
+        lifespans,
+        targetRadii,
+        crystalPosition,
+        lastEmissionTime,
+        emissionRate
+      } = particleSystem.userData;
+      
+      // Mise à jour de l'état d'activité
+      particleSystem.userData.isActive = isHovered;
+      
+      // Gestion de l'opacité et de l'émission des particules
+      if (isHovered) {
+        // Augmenter progressivement l'opacité
+        if (particleSystem.material.opacity < 0.8) {
+          particleSystem.material.opacity += 0.02;
+        }
+        
+        // Émission de particules
+        if (currentTime - lastEmissionTime > emissionRate) {
+          // Émettre plusieurs particules à chaque cycle d'émission
+          const particlesToEmit = 3;
+          
+          for (let emission = 0; emission < particlesToEmit; emission++) {
+            // Choisir une particule aléatoire
+            const particleIndex = Math.floor(Math.random() * startTimes.length);
+            
+            // Réinitialiser la particule
+            startTimes[particleIndex] = currentTime;
+            
+            // Positions
+            const positions = particleSystem.geometry.attributes.position;
+            
+            // Direction aléatoire avec dispersion horizontale
+            const angle = Math.random() * Math.PI * 2;
+            const randomDir = new THREE.Vector3(
+              Math.cos(angle) * 0.8,
+              (Math.random() - 0.5) * 0.4, // Variation verticale limitée
+              Math.sin(angle) * 0.8
+            ).normalize();
+            
+            // Position initiale plus éloignée du cristal (1.2 - 1.5 unités)
+            const initialOffset = 1.2 + Math.random() * 0.3;
+            positions.setXYZ(
+              particleIndex,
+              crystalPosition.x + randomDir.x * initialOffset,
+              crystalPosition.y + randomDir.y * initialOffset,
+              crystalPosition.z + randomDir.z * initialOffset
+            );
+            
+            // Vitesse avec dispersion et tendance à monter
+            velocities[particleIndex] = new THREE.Vector3(
+              randomDir.x * 0.01,
+              Math.random() * 0.01 + 0.005, // Toujours positive mais variée
+              randomDir.z * 0.01
+            );
+          }
+          
+          // Mettre à jour le temps de dernière émission
+          particleSystem.userData.lastEmissionTime = currentTime;
+          
+          // Marquer les positions comme nécessitant une mise à jour
+          particleSystem.geometry.attributes.position.needsUpdate = true;
+        }
+      } else {
+        // Diminuer progressivement l'opacité si non survolé
+        if (particleSystem.material.opacity > 0) {
+          particleSystem.material.opacity -= 0.01;
+        }
+      }
+      
+      // Si opacité nulle et non survolé, ne pas calculer l'animation
+      if (particleSystem.material.opacity <= 0 && !isHovered) return;
+      
+      // Animation des particules
+      const positions = particleSystem.geometry.attributes.position;
+      let needsUpdate = false;
+      
+      for (let i = 0; i < positions.count; i++) {
+        // Ignorer les particules qui n'ont pas encore commencé leur cycle
+        if (currentTime < startTimes[i]) continue;
+        
+        // Calculer l'âge de la particule
+        const age = currentTime - startTimes[i];
+        const lifeProgress = Math.min(1.0, age / lifespans[i]);
+        
+        // Si la particule a dépassé sa durée de vie, l'ignorer
+        if (age > lifespans[i]) continue;
+        
+        // Position actuelle
+        const x = positions.getX(i);
+        const y = positions.getY(i);
+        const z = positions.getZ(i);
+        
+        // Distance au cristal
+        const distVec = new THREE.Vector3(x, y, z).sub(crystalPosition);
+        const dist = distVec.length();
+        
+        // Mouvement de particule
+        let newX = x;
+        let newY = y;
+        let newZ = z;
+        
+        // Phase initiale d'expansion
+        if (dist < targetRadii[i] && lifeProgress < 0.6) {
+          // Déplacement standard avec légère accélération au début
+          const expansionFactor = 1.0 - Math.min(1.0, dist / targetRadii[i]);
+          const boost = 1.0 + expansionFactor * 0.3;
+          
+          // Calculer le mouvement avec ascension
+          newX = x + velocities[i].x * boost;
+          newY = y + velocities[i].y * boost;
+          newZ = z + velocities[i].z * boost;
+          
+          // Léger effet sinusoïdal
+          newX += Math.sin(age * 0.001) * 0.0005;
+          newZ += Math.cos(age * 0.0008) * 0.0005;
+        } 
+        // Phase de dispersion après avoir atteint altitude maximale
+        else {
+          // Ajouter une composante de dispersion horizontale progressive
+          // Cela évite que les particules restent bloquées en haut
+          const disperseFactor = Math.min(1.0, (lifeProgress - 0.6) * 2.5);
+          
+          // Calculer une direction de dispersion
+          const dispersionAngle = i * 0.1 + age * 0.0001; // Angle unique par particule
+          const disperseX = Math.cos(dispersionAngle) * 0.005 * disperseFactor;
+          const disperseZ = Math.sin(dispersionAngle) * 0.005 * disperseFactor;
+          
+          // Ralentissement vertical progressif et dispersion horizontale
+          newX = x + disperseX;
+          newY = y + velocities[i].y * (1.0 - disperseFactor * 0.8); // Ralentir verticalement
+          newZ = z + disperseZ;
+          
+          // Mouvement oscillant léger
+          const oscAmp = 0.0008 * disperseFactor;
+          newX += Math.sin(age * 0.0005) * oscAmp;
+          newZ += Math.cos(age * 0.0006) * oscAmp;
+        }
+        
+        // Effet de fondu en fin de vie
+        if (lifeProgress > 0.8) {
+          // Réduire progressivement l'opacité de chaque particule en fin de vie
+          // Ceci est géré implicitement par le système de durée de vie
+        }
+        
+        // Mettre à jour la position
+        positions.setX(i, newX);
+        positions.setY(i, newY);
+        positions.setZ(i, newZ);
+        needsUpdate = true;
+      }
+      
+      // Ne mettre à jour la géométrie que si nécessaire
+      if (needsUpdate) {
+        positions.needsUpdate = true;
+      }
+    };
+
+    // Animation des labels - simplifiée pour plus de subtilité
+    const animateLabels = () => {
+      crystalsRef.current.forEach((crystal) => {
+        if (!crystal.userData.label) return;
+        
+        const label = crystal.userData.label;
+        
+        // S'assurer que le label est toujours face à la caméra
+        label.lookAt(camera.position);
+        
+        const isHovered = crystal === hoveredCrystalRef.current;
+        const isActive = crystal.userData.id === activeSection;
+        
+        // Animation simplifiée et plus subtile
+        if (isHovered || isActive) {
+          // Animation d'apparition très progressive
+          if (label.material.opacity < 1) {
+            // Transition plus douce
+            label.material.opacity += 0.02;
+          }
+          
+          // Positionnement fixe quand visible, sans oscillation
+          const targetY = crystal.position.y - 7.8;
+          
+          // Animation très douce de la position (presque imperceptible)
+          label.position.y += (targetY - label.position.y) * 0.03;
+        } else {
+          // Animation de disparition progressive
+          if (label.material.opacity > 0) {
+            // Transition douce
+            label.material.opacity -= 0.02;
+          }
+          
+          // Retour à la position d'origine
+          const baseY = crystal.position.y - 8;
+          
+          // Animation douce de la position
+          label.position.y += (baseY - label.position.y) * 0.03;
+        }
+      });
+    };
+
+    // Création des cristaux
+    const createCrystals = async () => {
+      // Positions des cristaux
+      const positions = [
+        [-15, 0, 0],  // À propos (gauche)
+        [-5, 0, 0],   // Projets
+        [5, 0, 0],    // Compétences
+        [15, 0, 0]    // Contact (droite)
+      ];
+      
+      // Couleurs pour chaque cristal
+      const colors = [
+        0x6f42c1, // Violet pour À propos
+        0x4e7cff, // Bleu pour Projets
+        0x9370db, // Violet plus clair pour Compétences
+        0x0c71c3  // Bleu plus foncé pour Contact
+      ];
+      
+      const crystals = [];
+      
+      for (let i = 0; i < SECTIONS.length; i++) {
+        const section = SECTIONS[i];
+        
+        // Créer le cristal avec sa couleur et une taille plus grande
+        const crystal = createCrystal(colors[i], 3.5);
+        crystal.position.set(...positions[i]);
+        crystal.userData.id = section.id;
+        crystal.userData.title = section.title;
+        
+        // Créer le nouveau système de particules émergentes
+        const particles = createEmergingParticleSystem(crystal, colors[i]);
+        crystal.userData.particles = particles;
+        
+        // Création du label (texte)
+        const label = await createCrystalLabel(section.title, colors[i]);
+        label.position.set(positions[i][0], positions[i][1] - 8, positions[i][2] + 1);
+        label.material.opacity = 0; // S'assurer qu'il est initialement invisible
+        scene.add(label);
+        
+        // Stocker le label mais pas en tant qu'enfant du cristal
+        crystal.userData.label = label;
+        
+        scene.add(crystal);
+        crystals.push(crystal);
+      }
+      
+      crystalsRef.current = crystals;
+    };
+
+    // Gestionnaires d'événements
+    const handleMouseMove = (event) => {
+      mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouseRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    };
+    
+    const handleClick = () => {
+      // Ne pas traiter les clics si une section est déjà active
+      if (activeSection) {
+        return; // Sortir immédiatement si une section est active
+      }
+      
+      raycaster.setFromCamera(mouseRef.current, camera);
+      
+      // Récupérer tous les meshes des cristaux
+      const allMeshes = [];
+      crystalsRef.current.forEach(crystal => {
+        crystal.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            allMeshes.push(child);
+          }
+        });
+      });
+      
+      const intersects = raycaster.intersectObjects(allMeshes);
+      
       if (intersects.length > 0) {
-        const clicked = intersects[0].object;
-        // Remonter à l'ancêtre principal qui contient userData.id
-        let targetObject = clicked;
+        // Trouver le crystal parent
+        let targetObject = intersects[0].object;
         while(targetObject && !targetObject.userData.id) {
           targetObject = targetObject.parent;
         }
@@ -54,279 +473,218 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         }
       }
     };
-    // Renderer setup with better quality
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      alpha: true 
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x000814); // Bleu très sombre presque noir
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    mountRef.current.appendChild(renderer.domElement);
-
-    // Controls setup
-    const controls = new OrbitControls(camera, renderer.domElement);
-    Object.assign(controls, PORTFOLIO_CONFIG.controls);
-    controlsRef.current = controls;
-
-    // Add lights and particles
-    createLights(scene);
-    particlesRef.current = createParticles(scene);
-
-    // Raycaster for click detection
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    // Create background stars
-    const starsGeometry = new THREE.BufferGeometry();
-    const starsMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.1,
-      transparent: true,
-      opacity: 0.8,
-    });
-
-    const starsVertices = [];
-    for (let i = 0; i < 1000; i++) {
-      const x = (Math.random() - 0.5) * 2000;
-      const y = (Math.random() - 0.5) * 2000;
-      const z = (Math.random() - 0.5) * 2000;
-      starsVertices.push(x, y, z);
-    }
-
-    starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
-    const stars = new THREE.Points(starsGeometry, starsMaterial);
-    scene.add(stars);
-
-    // Stocker les objets créés
-    const objects = [];
-    objectsRef.current = objects;
-
-    // Fonction pour créer les textes 3D
-    const createSectionText = async () => {
-      for (const section of PORTFOLIO_CONFIG.sections) {
-        // Texte français plus court pour le rendu 3D
-        let displayText = section.title;
-        
-        // Créer la géométrie du texte
-        const textGeometry = await createText3D(displayText, 0.6); // Texte un peu plus grand
-        const material = createMaterial(section.id);
-        
-        // Créer un groupe pour le texte (facilitera la rotation pour faire face à la caméra)
-        const textGroup = new THREE.Group();
-        textGroup.position.set(...section.position);
-        textGroup.userData = { id: section.id };
-        
-        const textMesh = new THREE.Mesh(textGeometry, material);
-        textMesh.castShadow = true;
-        textMesh.receiveShadow = true;
-        
-        // Ajouter le texte au groupe
-        textGroup.add(textMesh);
-        
-        // Créer un effet de halo autour du texte
-        const glowGeometry = textGeometry.clone();
-        const glowMaterial = new THREE.MeshBasicMaterial({
-          color: material.color,
-          transparent: true,
-          opacity: 0.4,
-          side: THREE.BackSide
-        });
-        
-        const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
-        glowMesh.scale.multiplyScalar(1.05); // Légèrement plus grand que le texte
-        textGroup.add(glowMesh);
-        
-        // Créer des particules autour du texte
-        const particleCount = 30;
-        const particleGeometry = new THREE.BufferGeometry();
-        const particlePositions = new Float32Array(particleCount * 3);
-        
-        for (let i = 0; i < particleCount * 3; i += 3) {
-          const radius = 1.4; // Rayon légèrement plus grand pour les particules
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.random() * Math.PI;
-          
-          particlePositions[i] = radius * Math.sin(phi) * Math.cos(theta);
-          particlePositions[i + 1] = radius * Math.sin(phi) * Math.sin(theta);
-          particlePositions[i + 2] = radius * Math.cos(phi);
-        }
-        
-        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-        
-        const particleMaterial = new THREE.PointsMaterial({
-          color: material.color,
-          size: 0.08,
-          transparent: true,
-          opacity: 0.7,
-        });
-        
-        const particles = new THREE.Points(particleGeometry, particleMaterial);
-        textGroup.add(particles);
-        
-        // Ajouter le groupe à la scène
-        scene.add(textGroup);
-        objects.push({ group: textGroup, mesh: textMesh, glow: glowMesh, particles });
-      }
-    };
-
-    // Créer les textes 3D de manière asynchrone
-    createSectionText().then(() => {
-      // Une fois que tous les textes sont créés, configurer les interactions
-
-      // Handle clicks
-      const handleClick = (event) => {
-        // Calculate mouse position in normalized device coordinates
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(
-          objects.map(obj => obj.mesh)
-        );
-
-        if (intersects.length > 0) {
-          const clicked = intersects[0].object;
-          // Remonter à l'ancêtre principal qui contient userData.id
-          let targetObject = clicked;
-          while(targetObject && !targetObject.userData.id) {
-            targetObject = targetObject.parent;
-          }
-          
-          if (targetObject && targetObject.userData.id) {
-            setActiveSection(targetObject.userData.id);
-          }
-        }
-      };
-
-      window.addEventListener('click', handleClick);
-
-      // Animation loop
-      const animate = () => {
-        requestAnimationFrame(animate);
-        
-        const time = timeRef.current;
-        timeRef.current += 0.005;
-        
-        // Faire face à la caméra pour tous les groupes de textes
-        if (camera) {
-          objects.forEach(({ group, mesh, glow, particles }, index) => {
-            // Billboard effect - toujours face à la caméra
-            group.quaternion.copy(camera.quaternion);
-            
-            // Mouvement de flottement vertical
-            const floatY = Math.sin(time + index) * 0.1;
-            group.position.y = PORTFOLIO_CONFIG.sections[index].position[1] + floatY;
-            
-            // Animation du halo
-            if (glow) {
-              const pulseScale = 1.05 + Math.sin(time * 2) * 0.02;
-              glow.scale.set(pulseScale, pulseScale, pulseScale);
-              glow.material.opacity = 0.3 + Math.sin(time * 2) * 0.1;
-            }
-            
-            // Animation des particules
-            if (particles) {
-              const positions = particles.geometry.attributes.position.array;
-              for (let i = 0; i < positions.length; i += 3) {
-                const idx = i / 3;
-                positions[i] = positions[i] + Math.sin(time * 0.5 + idx) * 0.002;
-                positions[i + 1] = positions[i + 1] + Math.cos(time * 0.5 + idx) * 0.002;
-              }
-              particles.geometry.attributes.position.needsUpdate = true;
-              
-              // Faire pulser la taille des particules
-              particles.material.size = 0.08 + Math.sin(time * 3) * 0.02;
-            }
-            
-            // Mettre en évidence la section active
-            if (group.userData.id === activeSection) {
-              group.scale.lerp(new THREE.Vector3(1.5, 1.5, 1.5), 0.1);
-              mesh.material.opacity = 1;
-              mesh.material.emissiveIntensity = 0.9;
-              if (glow) {
-                glow.material.opacity = 0.6 + Math.sin(time * 4) * 0.2;
-                glow.scale.multiplyScalar(1.02);
-              }
-              if (particles) {
-                particles.material.opacity = 0.9;
-                particles.material.size = 0.12 + Math.sin(time * 4) * 0.04;
-              }
-            } else {
-              group.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
-              mesh.material.opacity = 0.8;
-              mesh.material.emissiveIntensity = 0.6;
-              if (glow) {
-                glow.material.opacity = 0.3 + Math.sin(time * 2) * 0.1;
-              }
-              if (particles) {
-                particles.material.opacity = 0.6;
-              }
-            }
-          });
-        }
-        
-        // Animer les étoiles arrière-plan
-        stars.rotation.y += 0.0002;
-        
-        // Animer les particules générales
-        if (particlesRef.current) {
-          particlesRef.current.rotation.y += 0.001;
-        }
-
-        controls.update();
-        renderer.render(scene, camera);
-      };
-      animate();
-    });
-
-    // Handle window resize
+    
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     };
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('click', handleClick);
-      window.removeEventListener('resize', handleResize);
-      mountRef.current?.removeChild(renderer.domElement);
-      scene.traverse((object) => {
-        if (object.geometry) object.geometry.dispose();
-        if (object.material) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      });
-      renderer.dispose();
+    
+    // Stocker les références pour le cleanup
+    handlersRef.current = {
+      mouseMove: handleMouseMove,
+      click: handleClick,
+      resize: handleResize
     };
-  }, [setActiveSection]);
 
-  // Mettre à jour visuellement la section active
-  useEffect(() => {
-    if (objectsRef.current.length > 0) {
-      objectsRef.current.forEach(({ group, mesh, glow }) => {
-        if (group.userData.id === activeSection) {
-          group.scale.set(1.5, 1.5, 1.5);
-          mesh.material.emissiveIntensity = 0.9;
-          if (glow) glow.material.opacity = 0.6;
-        } else {
-          group.scale.set(1, 1, 1);
-          mesh.material.emissiveIntensity = 0.6;
-          if (glow) glow.material.opacity = 0.3;
+    // Initialiser les cristaux puis démarrer l'animation
+    createCrystals().then(() => {
+      // Appeler updateEventListeners ici au lieu d'ajouter directement les écouteurs
+      updateEventListeners();
+    
+      // Boucle d'animation
+      const animate = () => {
+        requestAnimationFrame(animate);
+    
+        const currentTime = Date.now();
+    
+        // Animation des cristaux
+        crystalsRef.current.forEach((crystal, index) => {
+          // Rotation extrêmement lente
+          crystal.rotation.y += 0.0003;
+    
+          // Légère oscillation verticale
+          crystal.position.y = Math.sin(currentTime * 0.0005 + index) * 0.2;
+    
+          // Animer les particules avec le nouveau système
+          if (crystal.userData.particles) {
+            // N'activer les effets de survol que si aucune section n'est active
+            const isHovered = !activeSection && 
+              (crystal === hoveredCrystalRef.current || crystal.userData.id === activeSection);
+            
+            animateParticleSystem(crystal.userData.particles, isHovered, currentTime);
+            
+            // Mettre à jour la position du système de particules avec le crystal
+            if (crystal.userData.particles) {
+              crystal.userData.particles.userData.crystalPosition.copy(crystal.position);
+            }
+          }
+        });
+    
+        // Animer les labels
+        animateLabels();
+    
+        // Gestion du survol des cristaux uniquement si aucune section n'est active
+        if (camera && raycasterRef.current && !activeSection) {
+          raycasterRef.current.setFromCamera(mouseRef.current, camera);
+    
+          // Collecte des meshes pour le test d'intersection
+          const allMeshes = [];
+          crystalsRef.current.forEach(crystal => {
+            crystal.traverse((child) => {
+              if (child instanceof THREE.Mesh) {
+                allMeshes.push(child);
+              }
+            });
+          });
+    
+          const intersects = raycasterRef.current.intersectObjects(allMeshes);
+    
+          // Gestion du survol
+          if (intersects.length > 0) {
+            // Trouver le crystal parent
+            let targetCrystal = intersects[0].object;
+            while(targetCrystal && !targetCrystal.userData.id) {
+              targetCrystal = targetCrystal.parent;
+            }
+    
+            if (targetCrystal && targetCrystal.userData.id) {
+              // Si on survole un nouveau cristal
+              if (hoveredCrystalRef.current !== targetCrystal) {
+                hoveredCrystalRef.current = targetCrystal;
+              }
+            }
+          } else if (hoveredCrystalRef.current) {
+            // On ne survole plus aucun cristal
+            hoveredCrystalRef.current = null;
+          }
+        } else if (hoveredCrystalRef.current) {
+          // Réinitialiser l'état de survol si une section est active
+          hoveredCrystalRef.current = null;
         }
-      });
-    }
+    
+        renderer.render(scene, camera);
+      };
+      animate();
+    });
+
+    // Nettoyage
+    return () => {
+      window.removeEventListener('mousemove', handlersRef.current.mouseMove);
+      window.removeEventListener('click', handlersRef.current.click);
+      window.removeEventListener('resize', handlersRef.current.resize);
+      
+      if (mountRef.current && rendererRef.current) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
+      }
+      
+      // Nettoyer la scène
+      if (sceneRef.current) {
+        sceneRef.current.traverse((object) => {
+          if (object.geometry) object.geometry.dispose();
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach(material => material.dispose());
+            } else {
+              object.material.dispose();
+            }
+          }
+        });
+      }
+    };
+  }, [setActiveSection, updateEventListeners]); // Ajout de updateEventListeners ici
+
+  useEffect(() => {
+    // Fonction pour désactiver complètement les interactions avec le canvas
+    const disableCanvasInteractions = () => {
+      if (activeSection && rendererRef.current && rendererRef.current.domElement) {
+        const canvas = rendererRef.current.domElement;
+        
+        // Méthode 1: Désactiver les événements via CSS
+        canvas.style.pointerEvents = 'none';
+        
+        // Méthode 2: Rendre la zone "invisible" aux interactions
+        canvas.style.touchAction = 'none';
+        
+        // Méthode 3: Arrêter la propagation des événements
+        const blockEvent = (e) => {
+          if (activeSection) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }
+        };
+        
+        // Ajouter tous les bloqueurs d'événements possible
+        canvas.addEventListener('click', blockEvent, true);
+        canvas.addEventListener('mousedown', blockEvent, true);
+        canvas.addEventListener('mouseup', blockEvent, true);
+        canvas.addEventListener('mousemove', blockEvent, true);
+        canvas.addEventListener('touchstart', blockEvent, true);
+        canvas.addEventListener('touchmove', blockEvent, true);
+        canvas.addEventListener('touchend', blockEvent, true);
+        
+        // Nettoyage
+        return () => {
+          canvas.style.pointerEvents = 'auto';
+          canvas.style.touchAction = 'auto';
+          
+          canvas.removeEventListener('click', blockEvent, true);
+          canvas.removeEventListener('mousedown', blockEvent, true);
+          canvas.removeEventListener('mouseup', blockEvent, true);
+          canvas.removeEventListener('mousemove', blockEvent, true);
+          canvas.removeEventListener('touchstart', blockEvent, true);
+          canvas.removeEventListener('touchmove', blockEvent, true);
+          canvas.removeEventListener('touchend', blockEvent, true);
+        };
+      }
+    };
+    
+    // Exécuter la fonction et conserver son nettoyage
+    const cleanup = disableCanvasInteractions();
+    return cleanup;
   }, [activeSection]);
 
-  return <div ref={mountRef} style={{ width: '100%', height: '100vh' }} />;
+  // Utiliser updateEventListeners lorsque activeSection change
+  useEffect(() => {
+    if (handlersRef.current.mouseMove) {
+      updateEventListeners();
+    }
+  }, [activeSection, updateEventListeners]);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+      <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+      
+      {/* Couche de blocage complète qui absorbe tous les événements */}
+      {activeSection && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 100,
+            pointerEvents: 'all', // Capture tous les événements
+            cursor: 'default',
+            // Rendre la couche légèrement visible pour déboguer (à retirer en production)
+            // backgroundColor: 'rgba(255, 0, 0, 0.1)', 
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }}
+          onMouseMove={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+          }}
+        />
+      )}
+    </div>
+  );
 };
 
 export default Portfolio3D;
