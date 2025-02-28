@@ -46,6 +46,8 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     window.addEventListener('resize', handlersRef.current.resize);
   }, [activeSection]);
 
+  const animationFrameIdRef = useRef(null);
+
   useEffect(() => {
     if (!mountRef.current) return;
 
@@ -97,22 +99,22 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     const raycaster = new THREE.Raycaster();
     raycasterRef.current = raycaster;
 
-    // Nouveau système de particules qui émergent du cristal
+    // Nouveau système de particules qui émergent du cristal - optimisé
     const createEmergingParticleSystem = (crystal, color) => {
       // Configuration des particules
       const particlesCount = 60;
       const particleGeometry = new THREE.BufferGeometry();
-      
+
       // Tableaux pour stocker les positions et les données d'animation
       const positions = new Float32Array(particlesCount * 3);
       const velocities = [];
       const startTimes = [];
       const lifespans = [];
       const targetRadii = [];
-      
+
       // Initialiser toutes les particules au centre du cristal
       const crystalPosition = new THREE.Vector3().copy(crystal.position);
-      
+
       for (let i = 0; i < particlesCount; i++) {
         // Direction aléatoire avec bonne distribution circulaire
         const angle = Math.random() * Math.PI * 2;
@@ -121,32 +123,32 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           (Math.random() - 0.5) * 0.4, // Variation verticale limitée
           Math.sin(angle) * 0.8
         ).normalize();
-        
+
         // Position initiale plus éloignée du cristal (1.2 - 1.5 unités)
         const initialOffset = 1.2 + Math.random() * 0.3;
         positions[i * 3] = crystalPosition.x + randomDir.x * initialOffset;
         positions[i * 3 + 1] = crystalPosition.y + randomDir.y * initialOffset;
         positions[i * 3 + 2] = crystalPosition.z + randomDir.z * initialOffset;
-        
+
         // Vitesse avec tendance à monter mais avec variation
         velocities.push(new THREE.Vector3(
           randomDir.x * 0.01,
           Math.random() * 0.01 + 0.005, // Composante verticale toujours positive
           randomDir.z * 0.01
         ));
-        
+
         // Délai aléatoire progressif
-        startTimes.push(Date.now() + Math.random() * 2000);
-        
+        startTimes.push(Date.now() + Math.random() * 500);
+
         // Durée de vie variée mais pas trop longue pour éviter l'accumulation
         lifespans.push(3000 + Math.random() * 5000);
-        
+
         // Distance maximale avec variation
         targetRadii.push(2.5 + Math.random() * 2.5);
       }
-      
+
       particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      
+
       // Matériau lumineux pour des particules PLUS GROSSES
       const particleMaterial = new THREE.PointsMaterial({
         color: color,
@@ -157,10 +159,13 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         depthWrite: false,
         sizeAttenuation: true
       });
-      
+
       const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
       particleSystem.frustumCulled = false;
-      
+
+      // OPTIMISATION: Initialement invisible pour économiser des ressources
+      particleSystem.visible = false;
+
       // Stocker les données d'animation
       particleSystem.userData = {
         velocities,
@@ -170,12 +175,13 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         crystalPosition,
         isActive: false,
         lastEmissionTime: Date.now(),
-        emissionRate: 100
+        emissionRate: 50,
+        hasActiveParticles: false
       };
-      
+
       // Ajouter à la scène
       scene.add(particleSystem);
-      
+
       return particleSystem;
     };
 
@@ -200,13 +206,13 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
       if (isHovered) {
         // Augmenter progressivement l'opacité
         if (particleSystem.material.opacity < 0.8) {
-          particleSystem.material.opacity += 0.02;
+          particleSystem.material.opacity += 0.05;
         }
         
         // Émission de particules
         if (currentTime - lastEmissionTime > emissionRate) {
           // Émettre plusieurs particules à chaque cycle d'émission
-          const particlesToEmit = 3;
+          const particlesToEmit = 5;
           
           for (let emission = 0; emission < particlesToEmit; emission++) {
             // Choisir une particule aléatoire
@@ -245,6 +251,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           
           // Mettre à jour le temps de dernière émission
           particleSystem.userData.lastEmissionTime = currentTime;
+          particleSystem.userData.hasActiveParticles = true;
           
           // Marquer les positions comme nécessitant une mise à jour
           particleSystem.geometry.attributes.position.needsUpdate = true;
@@ -254,16 +261,31 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         if (particleSystem.material.opacity > 0) {
           particleSystem.material.opacity -= 0.01;
         }
+        
+        // Si l'opacité est nulle, désactiver complètement le système de particules pour économiser des ressources
+        if (particleSystem.material.opacity <= 0) {
+          particleSystem.visible = false;
+          particleSystem.userData.hasActiveParticles = false;
+          return;
+        }
       }
       
-      // Si opacité nulle et non survolé, ne pas calculer l'animation
-      if (particleSystem.material.opacity <= 0 && !isHovered) return;
+      // Réactiver le rendu si nécessaire (au cas où il était désactivé)
+      if (isHovered) {
+        particleSystem.visible = true;
+      }
       
-      // Animation des particules
+      // Animation des particules uniquement si le système est visible
+      if (!particleSystem.visible) return;
+      
       const positions = particleSystem.geometry.attributes.position;
       let needsUpdate = false;
       
-      for (let i = 0; i < positions.count; i++) {
+      // Réduire le nombre de particules animées si le système n'est pas survolé
+      // Cela optimisera encore davantage les performances
+      const particleCount = isHovered ? positions.count : Math.min(positions.count, 20);
+      
+      for (let i = 0; i < particleCount; i++) {
         // Ignorer les particules qui n'ont pas encore commencé leur cycle
         if (currentTime < startTimes[i]) continue;
         
@@ -295,9 +317,9 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           const boost = 1.0 + expansionFactor * 0.3;
           
           // Calculer le mouvement avec ascension
-          newX = x + velocities[i].x * boost;
-          newY = y + velocities[i].y * boost;
-          newZ = z + velocities[i].z * boost;
+          newX = x + velocities[i].x * boost * 1.5;
+          newY = y + velocities[i].y * boost * 1.5;
+          newZ = z + velocities[i].z * boost * 1.5;
           
           // Léger effet sinusoïdal
           newX += Math.sin(age * 0.001) * 0.0005;
@@ -323,12 +345,6 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           const oscAmp = 0.0008 * disperseFactor;
           newX += Math.sin(age * 0.0005) * oscAmp;
           newZ += Math.cos(age * 0.0006) * oscAmp;
-        }
-        
-        // Effet de fondu en fin de vie
-        if (lifeProgress > 0.8) {
-          // Réduire progressivement l'opacité de chaque particule en fin de vie
-          // Ceci est géré implicitement par le système de durée de vie
         }
         
         // Mettre à jour la position
@@ -494,7 +510,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     
       // Boucle d'animation
       const animate = () => {
-        requestAnimationFrame(animate);
+        animationFrameIdRef.current = requestAnimationFrame(animate);
     
         const currentTime = Date.now();
     
@@ -508,16 +524,16 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     
           // Animer les particules avec le nouveau système
           if (crystal.userData.particles) {
+            const particles = crystal.userData.particles;
+            
             // N'activer les effets de survol que si aucune section n'est active
             const isHovered = !activeSection && 
               (crystal === hoveredCrystalRef.current || crystal.userData.id === activeSection);
             
-            animateParticleSystem(crystal.userData.particles, isHovered, currentTime);
+            animateParticleSystem(particles, isHovered, currentTime);
             
             // Mettre à jour la position du système de particules avec le crystal
-            if (crystal.userData.particles) {
-              crystal.userData.particles.userData.crystalPosition.copy(crystal.position);
-            }
+            particles.userData.crystalPosition.copy(crystal.position);
           }
         });
     
@@ -567,30 +583,152 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
       };
       animate();
     });
-
-    // Nettoyage
     return () => {
+      // Supprimer les écouteurs d'événements
       window.removeEventListener('mousemove', handlersRef.current.mouseMove);
       window.removeEventListener('click', handlersRef.current.click);
       window.removeEventListener('resize', handlersRef.current.resize);
       
-      if (mountRef.current && rendererRef.current) {
-        mountRef.current.removeChild(rendererRef.current.domElement);
+      // Annuler l'animation en cours
+      if (window.cancelAnimationFrame && animationFrameIdRef.current) {
+        window.cancelAnimationFrame(animationFrameIdRef.current);
       }
       
-      // Nettoyer la scène
-      if (sceneRef.current) {
-        sceneRef.current.traverse((object) => {
-          if (object.geometry) object.geometry.dispose();
+      // Nettoyer le rendu WebGL
+      if (mountRef.current && rendererRef.current) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
+        rendererRef.current.dispose(); // Libérer les ressources WebGL
+      }
+      
+      // Nettoyer les systèmes de particules spécifiquement
+      if (crystalsRef.current && crystalsRef.current.length > 0) {
+        crystalsRef.current.forEach(crystal => {
+          if (!crystal) return;
+          
+          // Nettoyer les systèmes de particules
+          if (crystal.userData && crystal.userData.particles) {
+            const particles = crystal.userData.particles;
+            
+            // Supprimer de la scène
+            if (scene) {
+              scene.remove(particles);
+            }
+            
+            // Libérer les ressources GPU pour la géométrie
+            if (particles.geometry) {
+              particles.geometry.dispose();
+            }
+            
+            // Libérer les ressources GPU pour le matériau
+            if (particles.material) {
+              if (particles.material.map) {
+                particles.material.map.dispose();
+              }
+              particles.material.dispose();
+            }
+            
+            // Supprimer la référence
+            crystal.userData.particles = null;
+          }
+          
+          // Nettoyer les labels
+          if (crystal.userData && crystal.userData.label) {
+            const label = crystal.userData.label;
+            
+            // Supprimer de la scène
+            if (scene) {
+              scene.remove(label);
+            }
+            
+            // Libérer les ressources du label
+            if (label.material) {
+              // Libérer la texture de la mémoire GPU
+              if (label.material.map) {
+                label.material.map.dispose();
+              }
+              label.material.dispose();
+            }
+            
+            if (label.geometry) {
+              label.geometry.dispose();
+            }
+            
+            // Supprimer la référence
+            crystal.userData.label = null;
+          }
+          
+          // Nettoyer le cristal lui-même
+          if (scene) {
+            scene.remove(crystal);
+          }
+          
+          // Libérer les ressources du cristal et ses enfants
+          crystal.traverse((object) => {
+            if (object.geometry) {
+              object.geometry.dispose();
+            }
+            
+            if (object.material) {
+              if (Array.isArray(object.material)) {
+                object.material.forEach(material => {
+                  if (material.map) material.map.dispose();
+                  material.dispose();
+                });
+              } else {
+                if (object.material.map) object.material.map.dispose();
+                object.material.dispose();
+              }
+            }
+          });
+        });
+      }
+      
+      // Nettoyer le reste de la scène pour les objets qui n'auraient pas été traités
+      if (scene) {
+        // Libérer les ressources pour chaque objet restant dans la scène
+        scene.traverse((object) => {
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          
           if (object.material) {
             if (Array.isArray(object.material)) {
-              object.material.forEach(material => material.dispose());
+              object.material.forEach(material => {
+                // Nettoyer toutes les textures et propriétés spéciales du matériau
+                Object.keys(material).forEach(prop => {
+                  if (!material[prop]) return;
+                  if (material[prop].isTexture) {
+                    material[prop].dispose();
+                  }
+                });
+                material.dispose();
+              });
             } else {
+              // Nettoyer toutes les textures et propriétés spéciales du matériau
+              Object.keys(object.material).forEach(prop => {
+                if (!object.material[prop]) return;
+                if (object.material[prop].isTexture) {
+                  object.material[prop].dispose();
+                }
+              });
               object.material.dispose();
             }
           }
         });
+        
+        // Vider la scène
+        while(scene.children.length > 0) {
+          scene.remove(scene.children[0]);
+        }
       }
+      
+      // Libérer les références pour aider le garbage collector
+      crystalsRef.current = [];
+      sceneRef.current = null;
+      cameraRef.current = null;
+      rendererRef.current = null;
+      raycasterRef.current = null;
+      hoveredCrystalRef.current = null;
     };
   }, [setActiveSection, updateEventListeners]); // Ajout de updateEventListeners ici
 
