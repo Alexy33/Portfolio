@@ -16,12 +16,12 @@ bashCopy# Cloner le dépôt
 git clone https://github.com/Alexy33/portfolio.git
 
 # Naviguer dans le répertoire
-cd portfolio
-Ouvrir le fichier index.html dans votre navigateur
+cd portfolio  
+Ouvrir le fichier index.html dans votre navigateur  
 Ou utiliser un serveur local comme Live Server dans VSCode
 
 📝 Licence
-© 2025 Alexy Canu. Tous droits réservés.
+© 2025 Alexy Canu. Tous droits réservés.  
 Ce projet est sous licence MIT. Voir le fichier LICENSE pour plus de détails.
 
 Fait avec ❤️ par Alexy Canu
