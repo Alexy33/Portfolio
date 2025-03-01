@@ -264,8 +264,12 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         
         // Si l'opacité est nulle, désactiver complètement le système de particules pour économiser des ressources
         if (particleSystem.material.opacity <= 0) {
+          // Désactiver le rendu des particules
           particleSystem.visible = false;
           particleSystem.userData.hasActiveParticles = false;
+          // NOUVEAU: Réinitialiser complètement l'état des particules
+          resetParticles(particleSystem, crystalPosition);
+          // Sortir immédiatement de la fonction pour éviter les calculs suivants
           return;
         }
       }
@@ -358,6 +362,61 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
       if (needsUpdate) {
         positions.needsUpdate = true;
       }
+    };
+
+    // Fonction pour réinitialiser complètement l'état des particules
+    const resetParticles = (particleSystem, crystalPosition) => {
+      if (!particleSystem || !particleSystem.geometry) return;
+      
+      const positions = particleSystem.geometry.attributes.position;
+      const { velocities, startTimes, lifespans, targetRadii } = particleSystem.userData;
+      
+      // Recréer des positions et états complètement neufs pour chaque particule
+      for (let i = 0; i < positions.count; i++) {
+        // Direction aléatoire avec bonne distribution circulaire
+        const angle = Math.random() * Math.PI * 2;
+        const randomDir = new THREE.Vector3(
+          Math.cos(angle) * 0.8,
+          (Math.random() - 0.5) * 0.4,
+          Math.sin(angle) * 0.8
+        ).normalize();
+        
+        // Position initiale autour du cristal
+        const initialOffset = 1.2 + Math.random() * 0.3;
+        positions.setXYZ(
+          i,
+          crystalPosition.x + randomDir.x * initialOffset,
+          crystalPosition.y + randomDir.y * initialOffset,
+          crystalPosition.z + randomDir.z * initialOffset
+        );
+        
+        // Réinitialiser la vitesse
+        if (velocities[i]) {
+          velocities[i].set(
+            randomDir.x * 0.01,
+            Math.random() * 0.01 + 0.005,
+            randomDir.z * 0.01
+          );
+        }
+        
+        // Réinitialiser les timings
+        if (startTimes.length > i) {
+          startTimes[i] = Date.now() + Math.random() * 500;
+        }
+        
+        // Réinitialiser les durées de vie si besoin
+        if (lifespans.length > i) {
+          lifespans[i] = 3000 + Math.random() * 5000;
+        }
+        
+        // Réinitialiser les rayons cibles si besoin
+        if (targetRadii.length > i) {
+          targetRadii[i] = 2.5 + Math.random() * 2.5;
+        }
+      }
+      
+      // Marquer les positions comme nécessitant une mise à jour
+      positions.needsUpdate = true;
     };
 
     // Animation des labels - simplifiée pour plus de subtilité
