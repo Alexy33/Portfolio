@@ -17,9 +17,8 @@ git clone https://github.com/Alexy33/portfolio.git
 
 # Naviguer dans le répertoire
 cd portfolio
-
-# Ouvrir le fichier index.html dans votre navigateur
-# ou utiliser un serveur local comme Live Server dans VSCode
+Ouvrir le fichier index.html dans votre navigateur
+ou utiliser un serveur local comme Live Server dans VSCode
 
 📝 Licence
 © 2025 Alexy Canu. Tous droits réservés.
