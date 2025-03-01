@@ -57,31 +57,31 @@ const About = () => {
             </div>
           </div>
 
-          <h3 className="text-3xl font-semibold text-purple-200 animate-text hover:text-blue-300 transition-colors duration-300">Canu Alexy</h3>
-          <p className="text-xl text-blue-300 animate-text hover:text-purple-300 transition-colors duration-300">Développeur Junior</p>
+          <h3 className="text-3xl font-semibold text-purple-200 animate-text hover:text-blue-300 transition-colors duration-300">Alexy Canu</h3>
+          <p className="text-xl text-blue-300 animate-text hover:text-purple-300 transition-colors duration-300">Pentester Junior</p>
         </div>
         
         <div className="space-y-6 text-lg">
           <p className="text-gray-300 animate-text hover:text-blue-200 transition-colors duration-300 p-4 rounded-lg hover:bg-purple-900/20">
-            Tel un chasseur de rang S, je maîtrise les technologies web modernes et 
-            donne vie à des expériences numériques uniques.
+            Étudiant à Epitech en première année, je suis actuellement en recherche active de stage de 4 à 6 mois 
+            de juillet à décembre.
           </p>
           <p className="text-gray-300 animate-text hover:text-blue-200 transition-colors duration-300 p-4 rounded-lg hover:bg-purple-900/20">
-            Avec la précision d'un monarque des ombres, je transforme les concepts 
-            en réalités interactives qui défient les limites du web.
+            Passionné par la cybersécurité et la programmation, je cherche à développer mes compétences 
+            dans un environnement professionnel stimulant.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
           <div className="info-card p-6 rounded-xl bg-slate-900/80 border border-purple-500/30 backdrop-blur hover:bg-slate-800/80 transition-all duration-500 animate-text group">
             <h4 className="text-xl font-semibold text-purple-300 mb-3 group-hover:text-blue-300 transition-colors duration-300">Formation</h4>
-            <p className="text-gray-300 group-hover:text-white transition-colors duration-300">Master en Développement Web</p>
-            <p className="text-blue-300 group-hover:text-purple-300 transition-colors duration-300">École des Chasseurs</p>
+            <p className="text-gray-300 group-hover:text-white transition-colors duration-300">2024 - 2029: EPITECH Bordeaux</p>
+            <p className="text-blue-300 group-hover:text-purple-300 transition-colors duration-300">2022 - 2024: Baccalauréat général spécialités NSI & anglais</p>
           </div>
           <div className="info-card p-6 rounded-xl bg-slate-900/80 border border-purple-500/30 backdrop-blur hover:bg-slate-800/80 transition-all duration-500 animate-text group">
-            <h4 className="text-xl font-semibold text-purple-300 mb-3 group-hover:text-blue-300 transition-colors duration-300">Expérience</h4>
-            <p className="text-gray-300 group-hover:text-white transition-colors duration-300">5 ans de développement web</p>
-            <p className="text-blue-300 group-hover:text-purple-300 transition-colors duration-300">3 ans d'expertise Shadow Monarch</p>
+            <h4 className="text-xl font-semibold text-purple-300 mb-3 group-hover:text-blue-300 transition-colors duration-300">Contact</h4>
+            <p className="text-gray-300 group-hover:text-white transition-colors duration-300">Bordeaux 33000</p>
+            <p className="text-blue-300 group-hover:text-purple-300 transition-colors duration-300">alexy.canu@epitech.eu | 06 64 86 25 16</p>
           </div>
         </div>
       </div>

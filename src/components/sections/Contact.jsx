@@ -58,28 +58,28 @@ const Contact = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-6">
           <div className="contact-card rounded-lg p-6 backdrop-blur animate-text">
-            <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Coordonnées du Shadow Monarch</h3>
+            <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Mes Coordonnées</h3>
             <div className="space-y-4">
               <div className="contact-info-item flex items-center gap-3 text-gray-300 hover:text-white transition-colors duration-300">
                 <div className="p-2 rounded-full bg-purple-500/20">📍</div>
-                <span>Paris, France</span>
+                <span>Bordeaux, 33000</span>
               </div>
               <div className="contact-info-item flex items-center gap-3 text-gray-300 hover:text-white transition-colors duration-300">
                 <div className="p-2 rounded-full bg-purple-500/20">📧</div>
-                <span>email@example.com</span>
+                <span>alexy.canu@epitech.eu</span>
               </div>
               <div className="contact-info-item flex items-center gap-3 text-gray-300 hover:text-white transition-colors duration-300">
                 <div className="p-2 rounded-full bg-purple-500/20">📱</div>
-                <span>+33 6 12 34 56 78</span>
+                <span>06 64 86 25 16</span>
               </div>
             </div>
           </div>
           
           <div className="contact-card rounded-lg p-6 backdrop-blur animate-text">
-            <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Réseaux d'Ombre</h3>
+            <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Réseaux</h3>
             <div className="flex flex-wrap gap-4">
               <a 
-                href="https://linkedin.com" 
+                href="https://www.linkedin.com/in/alexy-canu-006aa1344/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="social-link px-4 py-3 rounded transition-all duration-300 text-white flex items-center gap-2"
@@ -87,7 +87,7 @@ const Contact = () => {
                 <span>LinkedIn</span>
               </a>
               <a 
-                href="https://github.com" 
+                href="https://github.com/Alexy33" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="social-link px-4 py-3 rounded transition-all duration-300 text-white flex items-center gap-2"
@@ -95,19 +95,29 @@ const Contact = () => {
                 <span>GitHub</span>
               </a>
               <a 
-                href="https://twitter.com" 
+                href="https://discord.gg/RNuqVzht98" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="social-link px-4 py-3 rounded transition-all duration-300 text-white flex items-center gap-2"
               >
-                <span>Twitter</span>
+                <span>Discord</span>
               </a>
             </div>
+          </div>
+
+          <div className="contact-card rounded-lg p-6 backdrop-blur animate-text">
+            <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Disponibilité</h3>
+            <p className="text-gray-300">
+              Je suis actuellement en recherche de stage de <span className="text-blue-300 font-semibold">4 à 6 mois</span> à partir de <span className="text-blue-300 font-semibold">juillet 2025</span> jusqu'à <span className="text-blue-300 font-semibold">décembre 2025</span>.
+            </p>
+            <p className="text-gray-300 mt-3">
+              Je suis particulièrement intéressé par les domaines de la cybersécurité, du développement logiciel et du DevOps.
+            </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="contact-card rounded-lg p-6 backdrop-blur space-y-6 animate-text">
-          <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Invoquer le Shadow Monarch</h3>
+          <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Me Contacter</h3>
           
           <div className="space-y-2">
             <label htmlFor="name" className="block text-gray-300">Nom</label>
