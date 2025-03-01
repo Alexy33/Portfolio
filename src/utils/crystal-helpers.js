@@ -15,9 +15,9 @@ export const createCrystal = (color, size = 1) => {
     const z = positions.getZ(i);
     
     // Facteur de déformation et d'étirement
-    const deformFactor = 0.15;
-    const stretchFactorTop = 1.8; // Étirement vertical vers le haut
-    const stretchFactorBottom = 1.5; // Étirement vertical vers le bas
+    const deformFactor = 0.2;
+    const stretchFactorTop = 2.4; // Étirement vertical vers le haut
+    const stretchFactorBottom = 2.0; // Étirement vertical vers le bas
     
     // Déformation organique
     positions.setX(i, x + (Math.sin(y * 5) * deformFactor * size));
