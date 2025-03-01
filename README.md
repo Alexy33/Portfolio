@@ -5,7 +5,7 @@ Portfolio personnel présentant mes projets, compétences et expériences en tan
 
 🛠️ Technologies utilisées : HTML, CSS, JavaScript, React, Tailwindcss, ThreeJS
 
-Déploiement : Vercel
+Déploiement : Vercel  
 Autres outils : GitHub
 
 🔗 Lien
