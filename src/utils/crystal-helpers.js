@@ -45,7 +45,9 @@ export const createCrystal = (color, size = 1) => {
     transmission: 0.7, // Plus transparent
     thickness: 0.5,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.02 // Plus brillant
+    clearcoatRoughness: 0.02, // Plus brillant
+    emissive: new THREE.Color(color).multiplyScalar(0.2), // Émission faible par défaut
+    emissiveIntensity: 0.0, // Intensité initiale à 0
   });
   
   // Maillage principal du cristal

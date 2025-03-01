@@ -367,10 +367,10 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     // Fonction pour réinitialiser complètement l'état des particules
     const resetParticles = (particleSystem, crystalPosition) => {
       if (!particleSystem || !particleSystem.geometry) return;
-      
+
       const positions = particleSystem.geometry.attributes.position;
       const { velocities, startTimes, lifespans, targetRadii } = particleSystem.userData;
-      
+
       // Recréer des positions et états complètement neufs pour chaque particule
       for (let i = 0; i < positions.count; i++) {
         // Direction aléatoire avec bonne distribution circulaire
@@ -380,7 +380,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           (Math.random() - 0.5) * 0.4,
           Math.sin(angle) * 0.8
         ).normalize();
-        
+
         // Position initiale autour du cristal
         const initialOffset = 1.2 + Math.random() * 0.3;
         positions.setXYZ(
@@ -389,7 +389,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           crystalPosition.y + randomDir.y * initialOffset,
           crystalPosition.z + randomDir.z * initialOffset
         );
-        
+
         // Réinitialiser la vitesse
         if (velocities[i]) {
           velocities[i].set(
@@ -398,23 +398,23 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
             randomDir.z * 0.01
           );
         }
-        
+
         // Réinitialiser les timings
         if (startTimes.length > i) {
           startTimes[i] = Date.now() + Math.random() * 500;
         }
-        
+
         // Réinitialiser les durées de vie si besoin
         if (lifespans.length > i) {
           lifespans[i] = 3000 + Math.random() * 5000;
         }
-        
+
         // Réinitialiser les rayons cibles si besoin
         if (targetRadii.length > i) {
           targetRadii[i] = 2.5 + Math.random() * 2.5;
         }
       }
-      
+
       // Marquer les positions comme nécessitant une mise à jour
       positions.needsUpdate = true;
     };
@@ -510,6 +510,99 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
       crystalsRef.current = crystals;
     };
 
+    // Effet d'illumination sur le cristal survolé
+    const illuminateCrystal = (crystal, isHovered, currentTime) => {
+      if (!crystal || !crystal.userData) return;
+
+      // Récupérer les références des maillages du cristal
+      const outerMesh = crystal.userData.crystal;
+      const innerMesh = crystal.userData.core;
+      const originalColor = crystal.userData.color;
+
+      if (!outerMesh || !innerMesh) return;
+
+      // Cristal survolé - brillance intense
+      if (isHovered) {
+        // 1. Augmenter l'émissivité et l'intensité du matériau extérieur
+        if (outerMesh.material) {
+          // Ajouter une émission de lumière (si pas déjà configurée)
+          if (!outerMesh.material.emissive) {
+            outerMesh.material.emissive = new THREE.Color(originalColor);
+            outerMesh.material.emissiveIntensity = 0;
+          }
+
+          // Animation de l'émissivité 
+          outerMesh.material.emissiveIntensity = Math.min(
+            0.7, 
+            outerMesh.material.emissiveIntensity + 0.04
+          );
+
+          // Augmenter légèrement l'opacité pour un effet plus intense
+          outerMesh.material.opacity = Math.min(0.85, outerMesh.material.opacity + 0.01);
+        }
+
+        // 2. Faire briller le noyau interne plus intensément
+        if (innerMesh.material) {
+          innerMesh.material.opacity = Math.min(0.95, innerMesh.material.opacity + 0.04);
+
+          // Animation pulsante du noyau (effet de battement)
+          const pulseIntensity = 0.1 * Math.sin(currentTime * 0.003) + 0.85;
+          innerMesh.scale.set(
+            0.65 * pulseIntensity,
+            0.65 * pulseIntensity,
+            0.65 * pulseIntensity
+          );
+        }
+
+        // 3. Ajouter un léger effet de scintillement sur la couleur
+        const hue = (currentTime * 0.0003) % 1;
+        const shimmerColor = new THREE.Color().setHSL(hue, 0.5, 0.7);
+
+        if (outerMesh.material) {
+          // Mélanger la couleur originale avec un effet de scintillement
+          const r = (originalColor >> 16 & 255) / 255;
+          const g = (originalColor >> 8 & 255) / 255;
+          const b = (originalColor & 255) / 255;
+          const baseColor = new THREE.Color(r, g, b);
+
+          // Mélange 85% couleur originale, 15% scintillement
+          outerMesh.material.color.copy(baseColor).lerp(shimmerColor, 0.15);
+        }
+      } 
+      // Cristal non survolé - retour à l'état normal
+      else {
+        // 1. Réduire progressivement l'émissivité du matériau extérieur
+        if (outerMesh.material && outerMesh.material.emissiveIntensity !== undefined) {
+          outerMesh.material.emissiveIntensity = Math.max(
+            0, 
+            outerMesh.material.emissiveIntensity - 0.02
+          );
+
+          // Restaurer l'opacité d'origine
+          outerMesh.material.opacity = Math.max(0.7, outerMesh.material.opacity - 0.01);
+        }
+
+        // 2. Retour à l'état normal du noyau interne
+        if (innerMesh.material) {
+          innerMesh.material.opacity = Math.max(0.1, innerMesh.material.opacity - 0.03);
+
+          // Restaurer l'échelle normale
+          innerMesh.scale.lerp(new THREE.Vector3(0.65, 0.65, 0.65), 0.1);
+        }
+
+        // 3. Restaurer la couleur d'origine
+        if (outerMesh.material) {
+          const r = (originalColor >> 16 & 255) / 255;
+          const g = (originalColor >> 8 & 255) / 255;
+          const b = (originalColor & 255) / 255;
+          const targetColor = new THREE.Color(r, g, b);
+
+          // Interpolation progressive vers la couleur d'origine
+          outerMesh.material.color.lerp(targetColor, 0.1);
+        }
+      }
+    };
+
     // Gestionnaires d'événements
     const handleMouseMove = (event) => {
       mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -576,24 +669,27 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         // Animation des cristaux
         crystalsRef.current.forEach((crystal, index) => {
           // Rotation extrêmement lente
-          crystal.rotation.y += 0.0003;
-    
+          crystal.rotation.y += 0.003;
+
           // Légère oscillation verticale
           crystal.position.y = Math.sin(currentTime * 0.0005 + index) * 0.2;
-    
+
+          // Déterminer si le cristal est survolé
+          const isHovered = !activeSection && 
+            (crystal === hoveredCrystalRef.current || crystal.userData.id === activeSection);
+
           // Animer les particules avec le nouveau système
           if (crystal.userData.particles) {
             const particles = crystal.userData.particles;
-            
-            // N'activer les effets de survol que si aucune section n'est active
-            const isHovered = !activeSection && 
-              (crystal === hoveredCrystalRef.current || crystal.userData.id === activeSection);
-            
+
             animateParticleSystem(particles, isHovered, currentTime);
-            
+
             // Mettre à jour la position du système de particules avec le crystal
             particles.userData.crystalPosition.copy(crystal.position);
           }
+
+          // NOUVEAU: Appliquer l'effet d'illumination
+          illuminateCrystal(crystal, isHovered, currentTime);
         });
     
         // Animer les labels
