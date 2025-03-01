@@ -19,6 +19,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
   const crystalsRef = useRef([]);
   const raycasterRef = useRef(null);
   const mouseRef = useRef(new THREE.Vector2());
+  const lastFrameTimeRef = useRef(null);
   const hoveredCrystalRef = useRef(null);
   
   // Références pour les event handlers
@@ -133,7 +134,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         // Vitesse avec tendance à monter mais avec variation
         velocities.push(new THREE.Vector3(
           randomDir.x * 0.01,
-          Math.random() * 0.01 + 0.005, // Composante verticale toujours positive
+          Math.random() * 0.01 + 0.01, // Composante verticale toujours positive
           randomDir.z * 0.01
         ));
 
@@ -144,7 +145,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         lifespans.push(3000 + Math.random() * 5000);
 
         // Distance maximale avec variation
-        targetRadii.push(2.5 + Math.random() * 2.5);
+        targetRadii.push(3.5 + Math.random() * 3.0);
       }
 
       particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -186,7 +187,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     };
 
     // Fonction pour animer les particules
-    const animateParticleSystem = (particleSystem, isHovered, currentTime) => {
+    const animateParticleSystem = (particleSystem, isHovered, currentTime, perfCorrection = 1.0) => {
       if (!particleSystem) return;
       
       const {
@@ -204,15 +205,19 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
       
       // Gestion de l'opacité et de l'émission des particules
       if (isHovered) {
-        // Augmenter progressivement l'opacité
+        // Augmenter progressivement l'opacité avec correction de performance
         if (particleSystem.material.opacity < 0.8) {
-          particleSystem.material.opacity += 0.05;
+          particleSystem.material.opacity += 0.05 * perfCorrection;
         }
         
-        // Émission de particules
-        if (currentTime - lastEmissionTime > emissionRate) {
+        // Émission de particules avec taux ajusté selon la performance
+        // Utiliser un taux d'émission adapté à la performance
+        const adjustedEmissionRate = emissionRate / Math.max(0.8, perfCorrection);
+        
+        if (currentTime - lastEmissionTime > adjustedEmissionRate) {
           // Émettre plusieurs particules à chaque cycle d'émission
-          const particlesToEmit = 5;
+          // Nombre ajusté en fonction des performances
+          const particlesToEmit = Math.max(3, Math.floor(5 * perfCorrection));
           
           for (let emission = 0; emission < particlesToEmit; emission++) {
             // Choisir une particule aléatoire
@@ -242,10 +247,12 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
             );
             
             // Vitesse avec dispersion et tendance à monter
+            // Vitesse augmentée pour compenser les performances plus faibles
+            const speedBoost = 1.0 + (perfCorrection > 1 ? (perfCorrection - 1) * 0.5 : 0);
             velocities[particleIndex] = new THREE.Vector3(
-              randomDir.x * 0.01,
-              Math.random() * 0.01 + 0.005, // Toujours positive mais variée
-              randomDir.z * 0.01
+              randomDir.x * 0.015 * speedBoost,
+              Math.random() * 0.02 * speedBoost + 0.012 * speedBoost, // Toujours positive mais variée
+              randomDir.z * 0.015 * speedBoost
             );
           }
           
@@ -257,24 +264,21 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           particleSystem.geometry.attributes.position.needsUpdate = true;
         }
       } else {
-        // Diminuer progressivement l'opacité si non survolé
+        // Diminuer progressivement l'opacité si non survolé, vitesse ajustée
         if (particleSystem.material.opacity > 0) {
-          particleSystem.material.opacity -= 0.01;
+          particleSystem.material.opacity -= 0.01 * perfCorrection;
         }
         
-        // Si l'opacité est nulle, désactiver complètement le système de particules pour économiser des ressources
+        // Si l'opacité est nulle, désactiver complètement le système de particules
         if (particleSystem.material.opacity <= 0) {
-          // Désactiver le rendu des particules
           particleSystem.visible = false;
           particleSystem.userData.hasActiveParticles = false;
-          // NOUVEAU: Réinitialiser complètement l'état des particules
           resetParticles(particleSystem, crystalPosition);
-          // Sortir immédiatement de la fonction pour éviter les calculs suivants
           return;
         }
       }
       
-      // Réactiver le rendu si nécessaire (au cas où il était désactivé)
+      // Réactiver le rendu si nécessaire
       if (isHovered) {
         particleSystem.visible = true;
       }
@@ -285,9 +289,11 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
       const positions = particleSystem.geometry.attributes.position;
       let needsUpdate = false;
       
-      // Réduire le nombre de particules animées si le système n'est pas survolé
-      // Cela optimisera encore davantage les performances
-      const particleCount = isHovered ? positions.count : Math.min(positions.count, 20);
+      // Adapter le nombre de particules animées selon les performances
+      // Sur un système lent, nous traitons moins de particules à la fois
+      const particleCount = isHovered 
+        ? positions.count 
+        : Math.min(positions.count, Math.floor(20 / perfCorrection));
       
       for (let i = 0; i < particleCount; i++) {
         // Ignorer les particules qui n'ont pas encore commencé leur cycle
@@ -318,35 +324,34 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
         if (dist < targetRadii[i] && lifeProgress < 0.6) {
           // Déplacement standard avec légère accélération au début
           const expansionFactor = 1.0 - Math.min(1.0, dist / targetRadii[i]);
-          const boost = 1.0 + expansionFactor * 0.3;
+          const boost = (1.0 + expansionFactor * 0.4) * perfCorrection;
           
-          // Calculer le mouvement avec ascension
+          // Calculer le mouvement avec ascension, ajusté selon performance
           newX = x + velocities[i].x * boost * 1.5;
-          newY = y + velocities[i].y * boost * 1.5;
+          newY = y + velocities[i].y * boost * 1.8;
           newZ = z + velocities[i].z * boost * 1.5;
           
           // Léger effet sinusoïdal
-          newX += Math.sin(age * 0.001) * 0.0005;
-          newZ += Math.cos(age * 0.0008) * 0.0005;
+          newX += Math.sin(age * 0.001) * 0.0005 * perfCorrection;
+          newZ += Math.cos(age * 0.0008) * 0.0005 * perfCorrection;
         } 
         // Phase de dispersion après avoir atteint altitude maximale
         else {
           // Ajouter une composante de dispersion horizontale progressive
-          // Cela évite que les particules restent bloquées en haut
           const disperseFactor = Math.min(1.0, (lifeProgress - 0.6) * 2.5);
           
           // Calculer une direction de dispersion
           const dispersionAngle = i * 0.1 + age * 0.0001; // Angle unique par particule
-          const disperseX = Math.cos(dispersionAngle) * 0.005 * disperseFactor;
-          const disperseZ = Math.sin(dispersionAngle) * 0.005 * disperseFactor;
+          const disperseX = Math.cos(dispersionAngle) * 0.005 * disperseFactor * perfCorrection;
+          const disperseZ = Math.sin(dispersionAngle) * 0.005 * disperseFactor * perfCorrection;
           
           // Ralentissement vertical progressif et dispersion horizontale
           newX = x + disperseX;
-          newY = y + velocities[i].y * (1.0 - disperseFactor * 0.8); // Ralentir verticalement
+          newY = y + velocities[i].y * (1.0 - disperseFactor * 0.8) * perfCorrection; // Ralentir verticalement
           newZ = z + disperseZ;
           
           // Mouvement oscillant léger
-          const oscAmp = 0.0008 * disperseFactor;
+          const oscAmp = 0.0008 * disperseFactor * perfCorrection;
           newX += Math.sin(age * 0.0005) * oscAmp;
           newZ += Math.cos(age * 0.0006) * oscAmp;
         }
@@ -367,21 +372,24 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     // Fonction pour réinitialiser complètement l'état des particules
     const resetParticles = (particleSystem, crystalPosition) => {
       if (!particleSystem || !particleSystem.geometry) return;
-
+    
       const positions = particleSystem.geometry.attributes.position;
       const { velocities, startTimes, lifespans, targetRadii } = particleSystem.userData;
-
-      // Recréer des positions et états complètement neufs pour chaque particule
+    
+      // Précalculer les valeurs pour éviter les calculs répétitifs
+      const now = Date.now();
+      
+      // Recréer des positions et états pour chaque particule
       for (let i = 0; i < positions.count; i++) {
-        // Direction aléatoire avec bonne distribution circulaire
-        const angle = Math.random() * Math.PI * 2;
+        // Direction aléatoire avec distribution circulaire améliorée
+        const angle = Math.PI * 2 * (i / positions.count + Math.random() * 0.2);
         const randomDir = new THREE.Vector3(
           Math.cos(angle) * 0.8,
           (Math.random() - 0.5) * 0.4,
           Math.sin(angle) * 0.8
         ).normalize();
-
-        // Position initiale autour du cristal
+    
+        // Position initiale avec plus de variation
         const initialOffset = 1.2 + Math.random() * 0.3;
         positions.setXYZ(
           i,
@@ -389,33 +397,32 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           crystalPosition.y + randomDir.y * initialOffset,
           crystalPosition.z + randomDir.z * initialOffset
         );
-
-        // Réinitialiser la vitesse
+    
+        // Vitesse plus variée et légèrement augmentée
         if (velocities[i]) {
           velocities[i].set(
-            randomDir.x * 0.01,
-            Math.random() * 0.01 + 0.005,
-            randomDir.z * 0.01
+            randomDir.x * 0.015, // Augmentation de la vélocité
+            Math.random() * 0.025 + 0.015, // Composante verticale plus forte
+            randomDir.z * 0.015
           );
         }
-
-        // Réinitialiser les timings
+    
+        // Timing optimisé
         if (startTimes.length > i) {
-          startTimes[i] = Date.now() + Math.random() * 500;
+          startTimes[i] = now + Math.random() * 300; // Délai réduit
         }
-
-        // Réinitialiser les durées de vie si besoin
+    
+        // Durées de vie légèrement réduites
         if (lifespans.length > i) {
-          lifespans[i] = 3000 + Math.random() * 5000;
+          lifespans[i] = 2500 + Math.random() * 3500; // Durée ajustée
         }
-
-        // Réinitialiser les rayons cibles si besoin
+    
+        // Rayons cibles légèrement augmentés
         if (targetRadii.length > i) {
-          targetRadii[i] = 2.5 + Math.random() * 2.5;
+          targetRadii[i] = 3.8 + Math.random() * 3.0; // Rayons légèrement plus grands
         }
       }
-
-      // Marquer les positions comme nécessitant une mise à jour
+    
       positions.needsUpdate = true;
     };
 
@@ -511,16 +518,16 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     };
 
     // Effet d'illumination sur le cristal survolé
-    const illuminateCrystal = (crystal, isHovered, currentTime) => {
+    const illuminateCrystal = (crystal, isHovered, currentTime, perfCorrection = 1.0) => {
       if (!crystal || !crystal.userData) return;
-
+    
       // Récupérer les références des maillages du cristal
       const outerMesh = crystal.userData.crystal;
       const innerMesh = crystal.userData.core;
       const originalColor = crystal.userData.color;
-
+    
       if (!outerMesh || !innerMesh) return;
-
+    
       // Cristal survolé - brillance intense
       if (isHovered) {
         // 1. Augmenter l'émissivité et l'intensité du matériau extérieur
@@ -530,75 +537,90 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
             outerMesh.material.emissive = new THREE.Color(originalColor);
             outerMesh.material.emissiveIntensity = 0;
           }
-
-          // Animation de l'émissivité 
+    
+          // Animation de l'émissivité adaptée à la performance
+          const emissiveStep = 0.04 * perfCorrection; 
           outerMesh.material.emissiveIntensity = Math.min(
             0.7, 
-            outerMesh.material.emissiveIntensity + 0.04
+            outerMesh.material.emissiveIntensity + emissiveStep
           );
-
+    
           // Augmenter légèrement l'opacité pour un effet plus intense
-          outerMesh.material.opacity = Math.min(0.85, outerMesh.material.opacity + 0.01);
+          const opacityStep = 0.01 * perfCorrection;
+          outerMesh.material.opacity = Math.min(0.85, outerMesh.material.opacity + opacityStep);
         }
-
+    
         // 2. Faire briller le noyau interne plus intensément
         if (innerMesh.material) {
-          innerMesh.material.opacity = Math.min(0.95, innerMesh.material.opacity + 0.04);
-
-          // Animation pulsante du noyau (effet de battement)
-          const pulseIntensity = 0.1 * Math.sin(currentTime * 0.003) + 0.85;
+          const opacityStep = 0.04 * perfCorrection;
+          innerMesh.material.opacity = Math.min(0.95, innerMesh.material.opacity + opacityStep);
+    
+          // Animation pulsante du noyau (effet de battement) avec fréquence adaptée
+          // On utilise perfCorrection pour ajuster la vitesse de pulsation
+          const pulseFrequency = 0.003 * Math.min(perfCorrection, 1.5);
+          const pulseIntensity = 0.1 * Math.sin(currentTime * pulseFrequency) + 0.85;
           innerMesh.scale.set(
             0.65 * pulseIntensity,
             0.65 * pulseIntensity,
             0.65 * pulseIntensity
           );
         }
-
+    
         // 3. Ajouter un léger effet de scintillement sur la couleur
-        const hue = (currentTime * 0.0003) % 1;
+        // Ajuster la vitesse de scintillement en fonction des performances
+        const shimmerSpeed = 0.0003 * Math.min(perfCorrection, 1.2);
+        const hue = (currentTime * shimmerSpeed) % 1;
         const shimmerColor = new THREE.Color().setHSL(hue, 0.5, 0.7);
-
+    
         if (outerMesh.material) {
           // Mélanger la couleur originale avec un effet de scintillement
           const r = (originalColor >> 16 & 255) / 255;
           const g = (originalColor >> 8 & 255) / 255;
           const b = (originalColor & 255) / 255;
           const baseColor = new THREE.Color(r, g, b);
-
-          // Mélange 85% couleur originale, 15% scintillement
-          outerMesh.material.color.copy(baseColor).lerp(shimmerColor, 0.15);
+    
+          // Mélange avec intensité adaptée selon les performances
+          const shimmerIntensity = 0.15 * Math.min(perfCorrection, 1.3);
+          outerMesh.material.color.copy(baseColor).lerp(shimmerColor, shimmerIntensity);
         }
       } 
       // Cristal non survolé - retour à l'état normal
       else {
         // 1. Réduire progressivement l'émissivité du matériau extérieur
         if (outerMesh.material && outerMesh.material.emissiveIntensity !== undefined) {
+          // Vitesse de transition adaptée
+          const emissiveStep = 0.02 * perfCorrection;
           outerMesh.material.emissiveIntensity = Math.max(
             0, 
-            outerMesh.material.emissiveIntensity - 0.02
+            outerMesh.material.emissiveIntensity - emissiveStep
           );
-
+    
           // Restaurer l'opacité d'origine
-          outerMesh.material.opacity = Math.max(0.7, outerMesh.material.opacity - 0.01);
+          const opacityStep = 0.01 * perfCorrection;
+          outerMesh.material.opacity = Math.max(0.7, outerMesh.material.opacity - opacityStep);
         }
-
+    
         // 2. Retour à l'état normal du noyau interne
         if (innerMesh.material) {
-          innerMesh.material.opacity = Math.max(0.1, innerMesh.material.opacity - 0.03);
-
-          // Restaurer l'échelle normale
-          innerMesh.scale.lerp(new THREE.Vector3(0.65, 0.65, 0.65), 0.1);
+          const opacityStep = 0.03 * perfCorrection;
+          innerMesh.material.opacity = Math.max(0.1, innerMesh.material.opacity - opacityStep);
+    
+          // Restaurer l'échelle normale avec vitesse adaptée
+          const targetScale = new THREE.Vector3(0.65, 0.65, 0.65);
+          const lerpFactor = 0.1 * perfCorrection;
+          innerMesh.scale.lerp(targetScale, Math.min(lerpFactor, 0.3));
         }
-
+    
         // 3. Restaurer la couleur d'origine
         if (outerMesh.material) {
           const r = (originalColor >> 16 & 255) / 255;
           const g = (originalColor >> 8 & 255) / 255;
           const b = (originalColor & 255) / 255;
           const targetColor = new THREE.Color(r, g, b);
-
-          // Interpolation progressive vers la couleur d'origine
-          outerMesh.material.color.lerp(targetColor, 0.1);
+    
+          // Interpolation progressive vers la couleur d'origine, vitesse adaptée
+          const lerpFactor = 0.1 * perfCorrection;
+          outerMesh.material.color.lerp(targetColor, Math.min(lerpFactor, 0.3));
         }
       }
     };
@@ -662,44 +684,55 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
     
       // Boucle d'animation
       const animate = () => {
+        // Planifier la prochaine frame
         animationFrameIdRef.current = requestAnimationFrame(animate);
-    
+      
+        // Calcul du temps et gestion des performances
         const currentTime = Date.now();
-    
+        const deltaTime = currentTime - (lastFrameTimeRef.current || currentTime);
+        lastFrameTimeRef.current = currentTime;
+        
+        // Facteur de correction de performance
+        // Normalise le temps entre frames pour une animation fluide indépendamment du FPS
+        // 16.67ms représente environ 60fps (1000ms / 60)
+        const perfCorrection = Math.min(Math.max(deltaTime / 16.67, 0.5), 2.5);
+      
         // Animation des cristaux
         crystalsRef.current.forEach((crystal, index) => {
-          // Rotation extrêmement lente
-          crystal.rotation.y += 0.003;
-
-          // Légère oscillation verticale
-          crystal.position.y = Math.sin(currentTime * 0.0005 + index) * 0.2;
-
-          // Déterminer si le cristal est survolé
+          // Rotation adaptée au deltaTime pour une vitesse constante quel que soit le FPS
+          crystal.rotation.y += 0.003 * perfCorrection;
+      
+          // Oscillation verticale adaptée pour rester fluide
+          const oscillationSpeed = 0.0005;
+          crystal.position.y = Math.sin(currentTime * oscillationSpeed + index) * 0.2;
+      
+          // Déterminer si le cristal est survolé ou actif
           const isHovered = !activeSection && 
             (crystal === hoveredCrystalRef.current || crystal.userData.id === activeSection);
-
-          // Animer les particules avec le nouveau système
+      
+          // Animer les particules avec le système optimisé
           if (crystal.userData.particles) {
             const particles = crystal.userData.particles;
-
-            animateParticleSystem(particles, isHovered, currentTime);
-
-            // Mettre à jour la position du système de particules avec le crystal
+            
+            // Passer le facteur de correction aux fonctions d'animation
+            animateParticleSystem(particles, isHovered, currentTime, perfCorrection);
+      
+            // Synchroniser la position du système de particules avec le crystal
             particles.userData.crystalPosition.copy(crystal.position);
           }
-
-          // NOUVEAU: Appliquer l'effet d'illumination
-          illuminateCrystal(crystal, isHovered, currentTime);
+      
+          // Appliquer l'effet d'illumination avec correction de performance
+          illuminateCrystal(crystal, isHovered, currentTime, perfCorrection);
         });
-    
-        // Animer les labels
-        animateLabels();
-    
+      
+        // Animer les labels avec correction de performance
+        animateLabels(perfCorrection);
+      
         // Gestion du survol des cristaux uniquement si aucune section n'est active
         if (camera && raycasterRef.current && !activeSection) {
           raycasterRef.current.setFromCamera(mouseRef.current, camera);
-    
-          // Collecte des meshes pour le test d'intersection
+      
+          // Collecte efficace des meshes pour le test d'intersection
           const allMeshes = [];
           crystalsRef.current.forEach(crystal => {
             crystal.traverse((child) => {
@@ -708,9 +741,9 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
               }
             });
           });
-    
+      
           const intersects = raycasterRef.current.intersectObjects(allMeshes);
-    
+      
           // Gestion du survol
           if (intersects.length > 0) {
             // Trouver le crystal parent
@@ -718,7 +751,7 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
             while(targetCrystal && !targetCrystal.userData.id) {
               targetCrystal = targetCrystal.parent;
             }
-    
+      
             if (targetCrystal && targetCrystal.userData.id) {
               // Si on survole un nouveau cristal
               if (hoveredCrystalRef.current !== targetCrystal) {
@@ -733,7 +766,8 @@ const Portfolio3D = ({ activeSection, setActiveSection }) => {
           // Réinitialiser l'état de survol si une section est active
           hoveredCrystalRef.current = null;
         }
-    
+      
+        // Rendu final
         renderer.render(scene, camera);
       };
       animate();

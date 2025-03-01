@@ -112,7 +112,7 @@ const Contact = () => {
             <h3 className="contact-title text-xl font-semibold text-purple-300 mb-6">Réseaux</h3>
             <div className="flex flex-wrap gap-4">
               <a 
-                href="https://linkedin.com/in/alexy-canu" 
+                href="https://www.linkedin.com/in/alexy-canu-006aa1344/" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="social-link px-4 py-3 rounded transition-all duration-300 text-white flex items-center gap-2"
