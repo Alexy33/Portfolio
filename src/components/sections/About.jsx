@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import profileImg from '../../assets/images/profile/photo_pro.JPG';
+import cvPDF from '../../assets/documents/CV_Alexy_Canu.pdf'; // Importez votre CV PDF ici
 import '../../styles/about.css';
 
 const About = () => {
@@ -59,6 +60,20 @@ const About = () => {
 
           <h3 className="text-3xl font-semibold text-purple-200 animate-text hover:text-blue-300 transition-colors duration-300">Alexy Canu</h3>
           <p className="text-xl text-blue-300 animate-text hover:text-purple-300 transition-colors duration-300">Pentester Junior</p>
+          
+          {/* Bouton de téléchargement du CV */}
+          <a 
+            href={cvPDF} 
+            download="Alexy_Canu_CV.pdf"
+            className="inline-block mt-5 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-white font-medium
+            shadow-lg hover:shadow-purple-500/30 transition-all duration-300 transform hover:-translate-y-1
+            animate-text flex items-center justify-center gap-2 group"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Télécharger mon CV
+          </a>
         </div>
         
         <div className="space-y-6 text-lg">
