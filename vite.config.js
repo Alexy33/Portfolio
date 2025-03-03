@@ -6,5 +6,5 @@ export default defineConfig({
   css: {
     postcss: './postcss.config.js'
   },
-  assetsInclude: ['**/*.JPG', '**/*.PNG'], // Ajout des extensions en majuscules
+  assetsInclude: ['**/*.JPG', '**/*.PNG'],
 })
