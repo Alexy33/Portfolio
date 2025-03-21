@@ -21,7 +21,7 @@ N'hésitez pas à explorer !`
                     },
                     'Documents': {
                         'CV': {
-                            'presentation.txt': `Je suis Alexy CANU, développeur web passionné par la création d'expériences interactives.`,
+                            'presentation.txt': `Je suis Alexy CANU, développeur web passionné par l'informatique.`,
                             'competences.txt': `Compétences techniques :
 Frontend:
 - HTML5, CSS3
@@ -33,9 +33,12 @@ Backend:
 - PHP
 - SQL
 - Node.js
+- C
+- Python
 
 Outils:
 - Git
+- Blender
 - VS Code
 - Adobe XD`,
                             'experiences.txt': `Expériences professionnelles et projets`

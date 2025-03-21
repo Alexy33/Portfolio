@@ -1,5 +1,3 @@
-// script/core/Terminal.js
-
 import { commands } from '../commands/index.js';
 import { clearSuggestions, showSuggestions } from '../utils/domUtils.js';
 import { WELCOME_MESSAGE, AVAILABLE_COMMANDS, TERMINAL_THEMES } from './constants.js';
@@ -7,19 +5,15 @@ import { WELCOME_MESSAGE, AVAILABLE_COMMANDS, TERMINAL_THEMES } from './constant
 
 export class Terminal {
     constructor(fileSystem) {
-        // Éléments DOM
         this.element = document.getElementById("terminal");
         this.content = document.getElementById("terminal-content");
         
-        // État du terminal
         this.commandHistory = [];
         this.historyIndex = -1;
         this.fileSystem = fileSystem;
         
-        // Commandes
         this.commands = commands(fileSystem);
 
-        // Initialisation
         this.init();
     }
 
@@ -30,7 +24,6 @@ export class Terminal {
     }
 
     setupEventListeners() {
-        // Garder le focus sur l'input lors du clic sur le terminal
         this.element.addEventListener('click', () => {
             const input = this.content.querySelector('#command-input');
             if (input) input.focus();
