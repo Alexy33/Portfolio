@@ -1,10 +1,30 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [react()],
   root: '.',
+  
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: './index.html',
+      },
+    },
+  },
+  
+  server: {
+    open: true,
+    port: 3000
+  },
+  
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
+  
+  optimizeDeps: {
+    include: ['@vercel/analytics']
   }
 });
